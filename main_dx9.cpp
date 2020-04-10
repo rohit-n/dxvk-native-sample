@@ -1,15 +1,15 @@
 // rohit_n: taken from http://www.directxtutorial.com/Lesson.aspx?lessonid=9-4-4
 // include the basic windows header files and the Direct3D header file
-#include <windows.h>
-#include <windowsx.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+
+#define DXVK_WSI_SDL2 1
 #include <d3d9.h>
 
 // define the screen resolution
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-// include the Direct3D Library file
-#pragma comment (lib, "d3d9.lib")
 
 // global declarations
 LPDIRECT3D9 d3d;    // the pointer to our Direct3D interface
@@ -17,7 +17,7 @@ LPDIRECT3DDEVICE9 d3ddev;    // the pointer to the device class
 LPDIRECT3DVERTEXBUFFER9 v_buffer = NULL;    // the pointer to the vertex buffer
 
 // function prototypes
-void initD3D(HWND hWnd);    // sets up and initializes Direct3D
+void initD3D(SDL_Window* window);    // sets up and initializes Direct3D
 void render_frame(void);    // renders a single frame
 void cleanD3D(void);    // closes Direct3D and releases memory
 void init_graphics(void);    // 3D declarations
@@ -26,97 +26,51 @@ struct CUSTOMVERTEX {FLOAT X, Y, Z, RHW; DWORD COLOR;};
 #define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
 
 // the WindowProc function prototype
-LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 
 
 // the entry point for any Windows program
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow)
+int main(int argc, char** argv)
 {
-    HWND hWnd;
-    WNDCLASSEX wc;
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
-    ZeroMemory(&wc, sizeof(WNDCLASSEX));
-
-    wc.cbSize = sizeof(WNDCLASSEX);
-    wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = hInstance;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = L"WindowClass";
-
-    RegisterClassEx(&wc);
-
-    hWnd = CreateWindowEx(NULL,
-                          L"WindowClass",
-                          L"Our Direct3D Program",
-                          WS_OVERLAPPEDWINDOW,
-                          0, 0,
-                          SCREEN_WIDTH, SCREEN_HEIGHT,
-                          NULL,
-                          NULL,
-                          hInstance,
-                          NULL);
-
-    ShowWindow(hWnd, nCmdShow);
+	SDL_Window* window = SDL_CreateWindow("Poopie!", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_VULKAN);
 
     // set up and initialize Direct3D
-    initD3D(hWnd);
+    initD3D(window);
 
     // enter the main loop:
 
-    MSG msg;
+	bool run = true;
+	while (run)
+	{
+		SDL_Event evt;
+		while (SDL_PollEvent(&evt))
+		{
+			if (evt.type == SDL_QUIT)
+			run = false;
+		}
 
-    while(TRUE)
-    {
-        while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-
-        if(msg.message == WM_QUIT)
-            break;
-
-        render_frame();
-    }
+		render_frame();
+	}
 
     // clean up DirectX and COM
     cleanD3D();
 
-    return msg.wParam;
-}
-
-
-// this is the main message handler for the program
-LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch(message)
-    {
-        case WM_DESTROY:
-            {
-                PostQuitMessage(0);
-                return 0;
-            } break;
-    }
-
-    return DefWindowProc (hWnd, message, wParam, lParam);
+    return 0;
 }
 
 
 // this function initializes and prepares Direct3D for use
-void initD3D(HWND hWnd)
+void initD3D(SDL_Window* window)
 {
     d3d = Direct3DCreate9(D3D_SDK_VERSION);
 
-    D3DPRESENT_PARAMETERS d3dpp;
+    D3DPRESENT_PARAMETERS d3dpp = {};
 
-    ZeroMemory(&d3dpp, sizeof(d3dpp));
     d3dpp.Windowed = TRUE;
     d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    d3dpp.hDeviceWindow = hWnd;
+    d3dpp.hDeviceWindow = window;
     d3dpp.BackBufferFormat = D3DFMT_X8R8G8B8;
     d3dpp.BackBufferWidth = SCREEN_WIDTH;
     d3dpp.BackBufferHeight = SCREEN_HEIGHT;
@@ -124,7 +78,7 @@ void initD3D(HWND hWnd)
     // create a device class using this information and the info from the d3dpp stuct
     d3d->CreateDevice(D3DADAPTER_DEFAULT,
                       D3DDEVTYPE_HAL,
-                      hWnd,
+                      window,
                       D3DCREATE_SOFTWARE_VERTEXPROCESSING,
                       &d3dpp,
                       &d3ddev);
